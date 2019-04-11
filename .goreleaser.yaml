@@ -2,7 +2,7 @@ before:
   hooks:
     - go get -u -d ./...
 builds:
-  - 
+  -
     main: ./cmd/amass/main.go
     binary: amass
     goos:
@@ -19,8 +19,8 @@ builds:
         goarch: 386
       - goos: windows
         goarch: 386
-  
-  - 
+
+  -
     main: ./cmd/amass.netdomains/main.go
     binary: amass.netdomains
     goos:
@@ -37,8 +37,8 @@ builds:
         goarch: 386
       - goos: windows
         goarch: 386
-  
-  - 
+
+  -
     main: ./cmd/amass.viz/main.go
     binary: amass.viz
     goos:
@@ -56,7 +56,7 @@ builds:
       - goos: windows
         goarch: 386
 
-  - 
+  -
     main: ./cmd/amass.db/main.go
     binary: amass.db
     goos:
@@ -74,7 +74,7 @@ builds:
       - goos: windows
         goarch: 386
 
-  - 
+  -
     main: ./cmd/amass.tracker/main.go
     binary: amass.tracker
     goos:
@@ -103,7 +103,7 @@ archive:
     - LICENSE
     - README.md
     - wordlists/*
-  
+
 checksum:
   name_template: "amass_checksums.txt"
 
