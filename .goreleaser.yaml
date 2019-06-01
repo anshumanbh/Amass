@@ -3,80 +3,8 @@ before:
     - go get -u -d ./...
 builds:
   -
-    main: ./cmd/amass/main.go
+    main: ./cmd/amass/
     binary: amass
-    goos:
-      - windows
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - 386
-    env:
-      - CGO_ENABLED=0
-    ignore:
-      - goos: darwin
-        goarch: 386
-      - goos: windows
-        goarch: 386
-
-  -
-    main: ./cmd/amass.netdomains/main.go
-    binary: amass.netdomains
-    goos:
-      - windows
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - 386
-    env:
-      - CGO_ENABLED=0
-    ignore:
-      - goos: darwin
-        goarch: 386
-      - goos: windows
-        goarch: 386
-
-  -
-    main: ./cmd/amass.viz/main.go
-    binary: amass.viz
-    goos:
-      - windows
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - 386
-    env:
-      - CGO_ENABLED=0
-    ignore:
-      - goos: darwin
-        goarch: 386
-      - goos: windows
-        goarch: 386
-
-  -
-    main: ./cmd/amass.db/main.go
-    binary: amass.db
-    goos:
-      - windows
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - 386
-    env:
-      - CGO_ENABLED=0
-    ignore:
-      - goos: darwin
-        goarch: 386
-      - goos: windows
-        goarch: 386
-
-  -
-    main: ./cmd/amass.tracker/main.go
-    binary: amass.tracker
     goos:
       - windows
       - linux
@@ -107,9 +35,6 @@ archive:
 checksum:
   name_template: "amass_checksums.txt"
 
-snapshot:
-  name_template: "{{ .Tag }}-next"
-
 changelog:
   sort: asc
   filters:
@@ -131,7 +56,3 @@ brew:
   description: "In-depth DNS Enumeration and Network Mapping"
   install: |
     bin.install "amass"
-    bin.install "amass.netdomains"
-    bin.install "amass.viz"
-    bin.install "amass.db"
-    bin.install "amass.tracker"
