@@ -1,10 +1,16 @@
 FROM golang:alpine as build
-WORKDIR /go/src/github.com/OWASP/Amass
-COPY . .
-RUN apk --no-cache add git \
-  && go get -u github.com/OWASP/Amass/...
+RUN apk add --no-cache --upgrade git openssh-client ca-certificates
+RUN go get -u github.com/golang/dep/cmd/dep
+WORKDIR /go/src/app
 
-FROM alpine:latest
-COPY --from=build /go/bin/amass /bin/amass
-COPY --from=build /go/src/github.com/OWASP/Amass/wordlists /wordlists
-ENTRYPOINT ["/bin/amass"]
+# Cache the dependencies early
+COPY Gopkg.toml Gopkg.lock ./
+RUN dep ensure -vendor-only -v
+
+# Install
+RUN go get -u github.com/OWASP/Amass/...
+COPY wordlists/ wordlists/
+COPY include-data-sources.txt .
+COPY exclude-data-sources.txt .
+
+ENTRYPOINT ["amass"]
