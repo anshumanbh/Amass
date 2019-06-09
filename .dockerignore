@@ -4,3 +4,4 @@ snapcraft.yaml
 images/*
 examples/*
 amass_config.ini
+amass_config.dev.ini
