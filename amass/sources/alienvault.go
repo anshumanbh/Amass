@@ -59,28 +59,39 @@ func (a *AlienVault) processRequests() {
 		select {
 		case <-a.Quit():
 			return
-		case req := <-a.RequestChan():
+		case req := <-a.DNSRequestChan():
 			if a.haveAPIKey && a.Config().IsDomainInScope(req.Domain) {
 				if time.Now().Sub(last) < a.RateLimit {
 					time.Sleep(a.RateLimit)
 				}
 				last = time.Now()
-				a.executeQuery(req.Domain)
+				a.executeDNSQuery(req.Domain)
+				last = time.Now()
+			}
+		case <-a.AddrRequestChan():
+		case <-a.ASNRequestChan():
+		case req := <-a.WhoisRequestChan():
+			if a.haveAPIKey && a.Config().IsDomainInScope(req.Domain) {
+				if time.Now().Sub(last) < a.RateLimit {
+					time.Sleep(a.RateLimit)
+				}
+				last = time.Now()
+				a.executeWhoisQuery(req.Domain)
 				last = time.Now()
 			}
 		}
 	}
 }
 
-func (a *AlienVault) executeQuery(domain string) {
+func (a *AlienVault) executeDNSQuery(domain string) {
 	re := a.Config().DomainRegex(domain)
 	if re == nil {
 		return
 	}
 
 	a.SetActive()
+	headers := a.getAPIHeaders()
 	u := a.getURL(domain) + "passive_dns"
-	headers := map[string]string{"Content-Type": "application/json", "X-OTX-API-KEY": a.API.Key}
 	page, err := utils.RequestWebPage(u, nil, headers, "", "")
 	if err != nil {
 		a.Config().Log.Printf("%s: %s: %v", a.String(), u, err)
@@ -181,7 +192,7 @@ func (a *AlienVault) executeQuery(domain string) {
 	}
 
 	for _, name := range names {
-		a.Bus().Publish(core.NewNameTopic, &core.Request{
+		a.Bus().Publish(core.NewNameTopic, &core.DNSRequest{
 			Name:   name,
 			Domain: domain,
 			Tag:    a.SourceType,
@@ -190,13 +201,120 @@ func (a *AlienVault) executeQuery(domain string) {
 	}
 
 	for _, ip := range ips {
-		a.Bus().Publish(core.NewAddrTopic, &core.Request{
+		a.Bus().Publish(core.NewAddrTopic, &core.AddrRequest{
 			Address: ip,
-			Domain:  domain,
 			Tag:     a.SourceType,
 			Source:  a.String(),
 		})
 	}
+}
+
+func (a *AlienVault) queryWhoisForEmails(domain string) []string {
+	var emails []string
+	headers := a.getAPIHeaders()
+	pageURL := a.getWhoisURL(domain)
+
+	a.SetActive()
+	page, err := utils.RequestWebPage(pageURL, nil, headers, "", "")
+	if err != nil {
+		a.Config().Log.Printf("%s: %s: %v", a.String(), pageURL, err)
+		return emails
+	}
+
+	var m struct {
+		Count int `json:"count"`
+		Data  []struct {
+			Value string `json:"value"`
+			Name  string `json:"name"`
+			Key   string `json:"key"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(page), &m); err != nil {
+		a.Config().Log.Printf("%s: %s: %v", a.String(), pageURL, err)
+		return emails
+	} else if m.Count == 0 {
+		a.Config().Log.Printf("%s: %s: The query returned zero results", a.String(), pageURL)
+		return emails
+	}
+
+	for _, row := range m.Data {
+		if strings.TrimSpace(row.Key) == "emails" {
+			email := strings.TrimSpace(row.Value)
+			emailParts := strings.Split(email, "@")
+			if len(emailParts) != 2 {
+				continue
+			}
+			d := emailParts[1]
+
+			// Unfortunately AlienVault doesn't categorize the email addresses so we
+			// have to filter by something we know to avoid adding registrar emails
+			if a.Config().IsDomainInScope(d) {
+				emails = utils.UniqueAppend(emails, email)
+			}
+		}
+	}
+	return emails
+}
+
+func (a *AlienVault) executeWhoisQuery(domain string) {
+	emails := a.queryWhoisForEmails(domain)
+	time.Sleep(a.RateLimit)
+
+	var newDomains []string
+	headers := a.getAPIHeaders()
+	for _, email := range emails {
+		a.SetActive()
+		pageURL := a.getReverseWhoisURL(email)
+		page, err := utils.RequestWebPage(pageURL, nil, headers, "", "")
+		if err != nil {
+			a.Config().Log.Printf("%s: %s: %v", a.String(), pageURL, err)
+			continue
+		}
+
+		type record struct {
+			Domain string `json:"domain"`
+		}
+		var domains []record
+		if err := json.Unmarshal([]byte(page), &domains); err != nil {
+			a.Config().Log.Printf("%s: %s: %v", a.String(), pageURL, err)
+			continue
+		}
+		for _, d := range domains {
+			if !a.Config().IsDomainInScope(d.Domain) {
+				newDomains = utils.UniqueAppend(newDomains, d.Domain)
+			}
+		}
+		time.Sleep(a.RateLimit)
+	}
+
+	if len(newDomains) == 0 {
+		a.Config().Log.Printf("%s: Reverse whois failed to discover new domain names for %s", a.String(), domain)
+		return
+	}
+
+	a.Bus().Publish(core.NewWhoisTopic, &core.WhoisRequest{
+		Domain:     domain,
+		NewDomains: newDomains,
+		Tag:        a.SourceType,
+		Source:     a.String(),
+	})
+}
+
+func (a *AlienVault) getAPIHeaders() map[string]string {
+	headers := map[string]string{"Content-Type": "application/json"}
+
+	if a.haveAPIKey {
+		headers["X-OTX-API-KEY"] = a.API.Key
+	}
+	return headers
+}
+func (a *AlienVault) getWhoisURL(domain string) string {
+	// https://otx.alienvault.com/otxapi/indicator/domain/whois/google.com
+	return "https://otx.alienvault.com/otxapi/indicator/domain/whois/" + domain
+}
+
+func (a *AlienVault) getReverseWhoisURL(email string) string {
+	return "https://otx.alienvault.com/otxapi/indicator/email/whois/" + email
 }
 
 func (a *AlienVault) getURL(domain string) string {

@@ -1,7 +1,7 @@
 // Copyright 2017 Jeff Foley. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 
-package amass
+package core
 
 import (
 	"testing"
@@ -10,8 +10,10 @@ import (
 const TestDomain string = "owasp-amass.com"
 
 func TestZoneTransfer(t *testing.T) {
-	//build+ integration
-	//This is an integrated test. To run this test type "go test -tags=integration" in Amass's gopath
+	if *networkTest == false {
+		return
+	}
+
 	tests := []struct {
 		expected string
 	}{
