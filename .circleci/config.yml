@@ -5,7 +5,7 @@ version: 2
 jobs:
   test:
     docker:
-      - image: circleci/golang:1.12.3
+      - image: caffix/amass:release
 
     working_directory: /go/src/github.com/OWASP/Amass
     steps:
@@ -14,49 +14,23 @@ jobs:
           name: "Test Amass"
           command: |
             export GO111MODULE=on
-            cd amass
             go test -v -race ./...
 
   binaries:
     docker:
-      - image: circleci/golang:1.12.3
+      - image: caffix/amass:release
 
     working_directory: /go/src/github.com/OWASP/Amass
     steps:
       - checkout
       - run:
-          name: "Build Amass Binaries"
+          name: "Build Amass and Release"
           command: |
+            mkdir ../.snapcraft
+            echo $SNAPCRAFT_LOGIN_FILE | base64 --decode --ignore-garbage > ../.snapcraft/snapcraft.cfg
             curl -sL https://git.io/goreleaser | bash
-
-  buildsnap:
-    docker:
-      - image: snapcore/snapcraft:stable
-
-    working_directory: /go/src/github.com/OWASP/Amass
-    steps:
-      - checkout
-
-      - run:
-          name: "Build Snap Package"
-          command: apt update && snapcraft
-      - persist_to_workspace:
-          root: .
-          paths:
-            - "*.snap"
-
-  pubsnap:
-    docker:
-      - image: snapcore/snapcraft:stable
-    steps:
-      - attach_workspace:
-          at: .
-      - run:
-          name: "Publish to Snap Store"
-          command: |
-            mkdir .snapcraft
-            echo $SNAPCRAFT_LOGIN_FILE | base64 --decode --ignore-garbage > .snapcraft/snapcraft.cfg
-            snapcraft push *.snap --release edge
+            cd ..
+            find Amass/dist -name *.snap -print | xargs -n 1 snapcraft push --release edge
 
 workflows:
   version: 2
@@ -66,18 +40,6 @@ workflows:
       - binaries:
           requires:
             - test
-          filters:
-            branches:
-              only: master
-      - buildsnap:
-          requires:
-            - test
-          filters:
-            branches:
-              only: master
-      - pubsnap:
-          requires:
-            - buildsnap
           filters:
             branches:
               only: master

@@ -1,6 +1,3 @@
-before:
-  hooks:
-    - go get -u -d ./...
 builds:
   -
     main: ./cmd/amass/
@@ -13,6 +10,7 @@ builds:
       - amd64
       - 386
     env:
+      - GO111MODULE=on
       - CGO_ENABLED=0
     ignore:
       - goos: darwin
@@ -20,17 +18,18 @@ builds:
       - goos: windows
         goarch: 386
 
-archive:
-  name_template: "amass_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-  replacements:
-    darwin: macos
-    386: i386
-  wrap_in_directory: true
-  format: zip
-  files:
-    - LICENSE
-    - README.md
-    - wordlists/*
+archives:
+  -
+    name_template: "amass_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    replacements:
+      darwin: macos
+      386: i386
+    wrap_in_directory: true
+    format: zip
+    files:
+      - LICENSE
+      - README.md
+      - wordlists/*
 
 checksum:
   name_template: "amass_checksums.txt"
@@ -42,17 +41,32 @@ changelog:
     - '^doc:'
     - '^test:'
 
-brew:
-  name: amass
-  github:
-    owner: caffix
-    name: homebrew-amass
-  url_template: "http://github.com/OWASP/Amass/releases/download/{{ .Version }}/amass_{{ .Version }}_macos_amd64.zip"
-  commit_author:
-    name: caffix
-    email: caffix@users.noreply.github.com
-  folder: Formula
-  homepage: "https://www.owasp.org/index.php/OWASP_Amass_Project"
-  description: "In-depth DNS Enumeration and Network Mapping"
-  install: |
-    bin.install "amass"
+brews:
+  -
+    name: amass
+    github:
+      owner: caffix
+      name: homebrew-amass
+    url_template: "http://github.com/OWASP/Amass/releases/download/{{ .Version }}/amass_{{ .Version }}_macos_amd64.zip"
+    commit_author:
+      name: caffix
+      email: caffix@users.noreply.github.com
+    folder: Formula
+    homepage: "https://www.owasp.org/index.php/OWASP_Amass_Project"
+    description: "In-depth DNS Enumeration and Network Mapping"
+
+snapcrafts:
+  -
+    name: amass
+    # Remember you need to `snapcraft login` first.
+    #publish: true
+    summary: In-depth DNS Enumeration and Network Mapping.
+    description: The OWASP Amass Project has developed a tool to help information security professionals perform network mapping of attack surfaces and perform external asset discovery using open source information gathering and active reconnaissance techniques.
+    grade: stable
+    confinement: strict
+    # Your app's license, based on SPDX license expressions: https://spdx.org/licenses
+    license: Apache-2.0	
+
+    apps:
+      amass:
+        plugs: ["home", "network", "removable-media"]

@@ -1,6 +1,9 @@
 
 # [![OWASP Logo](https://github.com/OWASP/Amass/blob/master/images/owasp_logo.png) OWASP Amass](https://www.owasp.org/index.php/OWASP_Amass_Project) - Installation Guide
 
+[![Packaging status](https://repology.org/badge/vertical-allrepos/amass.svg)](https://repology.org/metapackage/amass/versions)
+[![Get it from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-white.svg)](https://snapcraft.io/amass)
+
 ## Prebuilt Binaries
 
 A [precompiled version is available](https://github.com/OWASP/Amass/releases) with each release.
@@ -16,13 +19,13 @@ sudo docker build -t amass https://github.com/OWASP/Amass.git
 2. Run the Docker image:
 
 ```bash
-sudo docker run amass --passive -d example.com
+sudo docker run amass enum --passive -d example.com
 ```
 
 The wordlists maintained in the Amass git repository are available in `/wordlists/` within the docker container. For example, to use `all.txt`:
 
 ```bash
-sudo docker run amass -w /wordlists/all.txt -d example.com
+sudo docker run amass enum -brute -w /wordlists/all.txt -d example.com
 ```
 
 ## From Source
